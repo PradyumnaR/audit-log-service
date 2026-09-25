@@ -30,3 +30,9 @@ Python 3.13, FastAPI, Pydantic, SQLAlchemy, SQLite, pytest, ruff, mypy, bandit, 
 
 - docs/architecture.md for design decisions
 - docs/scenario-a.md, scenario-b.md, scenario-c.md for tasks and acceptance criteria
+
+## AI usage logging
+
+- Engineer runs /log-ai after each meaningful task.
+- Never fill Decision, Rationale, or Commit.
+- Never edit existing log entries.
