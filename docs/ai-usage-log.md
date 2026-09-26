@@ -5,3 +5,11 @@
 - **Decision:** Accepted
 - **Rationale:** Reviewed pyproject.toml and Makefile line by line; Structure matches as planned layout.
 - **Commit:** 641b0d8
+
+## #2 — Draft: Architecture.md file (2026-09-26)
+
+- **Category:** Analysis/Design
+- **Prompt:** Draft docs/architecture.md as a short, simple description of how the system works, using only decisions from docs/scenario-a.md and CLAUDE.md. Use exactly two sections, Summary and Architecture, where Architecture has a two-column table (Scenarios, Summary) with a scenario-a row that summarizes its decisions in 5–7 bullets without repeating the API examples.
+- **Decision:** Accepted
+- **Rationale:** Reviewd scenario-a.md file decisions updated in architecture.md file
+- **Commit:** TODO (engineer)
