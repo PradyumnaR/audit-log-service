@@ -49,4 +49,12 @@
 - **Prompt:** Implement A3 from docs/scenario-a.md (save with chain link) following the decisions in docs/scenario-a.md and docs/scenario-b.md, reusing the A2 hashing module. Include a test that runs 5 simultaneous writes and checks the chain is still unbroken; make check passes.
 - **Decision:** Accepted
 - **Rationale:** Checked code changes, ran make test to inspect hashing link changes
+- **Commit:** 705c336
+
+## #7 — Scenario-a Task: A4 (2026-09-27)
+
+- **Category:** Implementation
+- **Prompt:** Implement A4 from docs/scenario-a.md (POST /audit/events) following the decisions in docs/scenario-a.md and docs/scenario-b.md, reusing the append logic from A3; make check passes.
+- **Decision:** Accepted
+- **Rationale:** Checked code changes, tested POST /audit/events using swagger fastapi.
 - **Commit:** TODO (engineer)

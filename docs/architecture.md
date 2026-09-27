@@ -57,6 +57,24 @@ All hashing lives in this one module. It uses only the standard library, so scri
 
 **Write lock:** on SQLite, `make_engine` makes every transaction start with `BEGIN IMMEDIATE`, so the database write lock is taken at the transaction's first statement. Parallel appends therefore run one at a time: each one waits for the lock (pysqlite's default 5 s busy timeout), then sees the record committed before it. Because the timestamp is also taken under the lock, timestamps never decrease in `id` order. The trade-off is that reads also take the lock while their transaction is open. That is acceptable at SQLite scale.
 
+### API: `POST /audit/events` (`src/audit_log/api/events.py`, `src/audit_log/schema/events.py`)
+
+The endpoint validates the body with `EventCreate`, then calls `append_event` from the repository (no append logic lives in the API layer). On success it returns `201` with `id`, the event fields and the server `timestamp`.
+
+Validation (`422` on failure, nothing is saved):
+
+- **Required:** `eventType`, `actorId`, `resourceType`, `resourceId`, `payload`. Names are camelCase only.
+- **Strict types:** no coercion. For example, a number is not accepted as `actorId`, and `payload` must be a JSON object.
+- **`eventType` / `resourceType`:** UPPER_SNAKE_CASE (`^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$`), max 64 chars.
+- **`actorId` / `resourceId`:** 1–255 chars, no leading or trailing whitespace, no line breaks.
+- **`payload`:** canonical JSON is at most 16 KiB (UTF-8 bytes, `MAX_PAYLOAD_BYTES`). NaN and Infinity are rejected because they can't be canonically serialized for hashing.
+- **Unknown fields are rejected.** This includes server-owned fields: `timestamp` (the server assigns it), `id`, `contentHash`, `previousHash` and `archived`.
+- **Error body:** FastAPI's standard `{"detail": [...]}` without the rejected `input` value. That way, error responses never echo sensitive or oversized payloads, and NaN inputs can't turn a `422` into a `500`.
+
+**Append-only:** there is no update or delete route. `PUT`/`PATCH`/`DELETE` on `/audit/events` return `405`, and `/audit/events/{id}` returns `404`.
+
+**App wiring (`src/audit_log/api/app.py`):** `create_app(engine=None)` stores the engine on `app.state` (the default engine uses `DATABASE_URL`) and creates the schema on startup. Each request gets its own `Session` through the `get_session` dependency.
+
 ### Configuration (`src/audit_log/config.py`)
 
 - `SENSITIVE_FIELDS`: comma-separated top-level payload keys. Empty by default.
