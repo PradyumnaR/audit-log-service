@@ -25,4 +25,4 @@
   - Redaction: chose salted field hashes over encryption with key deletion (key management too complex) and re-hashing (breaks tamper evidence). Chose a configured SENSITIVE_FIELDS list and a script trigger, keeping the public API append-only.
   - Export: kept resourceType required with resourceId, although the brief says "resourceId or actorId", for consistency with the query rule. Chose not to sign bundles; documented it as a limitation with the mitigation instead.
   - Redaction changes what Scenario A hashes, so updated scenario-a.md before building.
-- **Commit:** TODO (engineer)
+- **Commit:** fd9be51f
