@@ -180,6 +180,11 @@ Violation types: CONTENT_HASH_MISMATCH, BROKEN_LINK
 | 12  | A5   | GET validation  | `EventQuery` rejects unknown params, bad filter formats, `resourceId` without `resourceType`, `from >= to`, `limit` outside 1–200 (default 50), bad cursors (`422`) |
 | 13  | A5   | Time range      | `from`/`to` need ISO 8601 with `Z` or offset (epochs/naive refused); normalized to stored UTC string, fractional seconds rounded up so `>= from` / `< to` stay exact |
 | 14  | A5   | API             | Items add `contentHash`, `previousHash`; salts never returned; sensitive key with field hash but no salt shown as `"[REDACTED]"` (scenario B)                               |
+| 15  | A6   | Verify logic    | `verify_chain` in `domain/verification.py`, stdlib only, reuses `domain/hashing.py`; reads records via a `ChainRecord` protocol, so no DB types in the domain; stops at first violation |
+| 16  | A6   | Violation types | Per record in `id` order: `INVALID_ARCHIVE` (archived after non-archived, scenario B), `BROKEN_LINK` (previousHash ≠ prior contentHash or genesis), `CONTENT_HASH_MISMATCH` (recomputed hash differs) |
+| 17  | A6   | Archived/fields | Archived records: link check only (content cleared); sensitive value with salt checked against its field hash (`CONTENT_HASH_MISMATCH`), redacted fields skipped; deleting newest records is not detectable |
+| 18  | A7   | API             | `GET /audit/verify` in `api/verify.py` only wires `iter_chain` → `verify_chain` → `VerifyResponse`; always `200`; intact omits violation fields; `recordsChecked` includes the broken record |
+| 19  | A7   | Storage read    | `iter_chain` streams all records (including archived) in batches of 500 under the SQLite write lock, so appends wait and verify sees one consistent chain                   |
 
 ## 7. Validation
 

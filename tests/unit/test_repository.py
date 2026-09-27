@@ -11,12 +11,14 @@ from sqlalchemy import Engine, select, text
 from sqlalchemy.orm import Session
 
 from audit_log.domain.hashing import GENESIS_HASH, compute_content_hash, compute_field_hash
+from audit_log.storage import repository
 from audit_log.storage.database import create_schema, make_engine
 from audit_log.storage.models import AuditEvent
 from audit_log.storage.repository import (
     EventFilter,
     NewEvent,
     append_event,
+    iter_chain,
     latest_hash,
     query_events,
 )
@@ -309,3 +311,26 @@ def test_query_excludes_archived_records(engine: Engine) -> None:
 def test_query_rejects_non_positive_limit(engine: Engine) -> None:
     with Session(engine) as session, pytest.raises(ValueError, match="limit"):
         query_events(session, EventFilter(), limit=0)
+
+
+def test_iter_chain_yields_all_records_in_id_order(engine: Engine) -> None:
+    with Session(engine) as session:
+        for _ in range(3):
+            _append(session)
+        _archive(session, 1)
+        records = list(iter_chain(session))
+        assert [record.id for record in records] == [1, 2, 3]
+        assert [record.archived for record in records] == [True, False, False]
+
+
+def test_iter_chain_empty_table(engine: Engine) -> None:
+    with Session(engine) as session:
+        assert list(iter_chain(session)) == []
+
+
+def test_iter_chain_streams_across_batches(engine: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(repository, "CHAIN_BATCH_SIZE", 2)
+    with Session(engine) as session:
+        for _ in range(5):
+            _append(session)
+        assert [record.id for record in iter_chain(session)] == [1, 2, 3, 4, 5]

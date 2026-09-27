@@ -65,7 +65,7 @@
 - **Prompt:** Move the Implementation section (Hashing, Appending to the chain, API: POST, Configuration) from docs/architecture.md into section 6. Execution notes of docs/scenario-a.md as a table of at most 10 rows.
 - **Decision:** Accepted
 - **Rationale:** Checked scenario-a.md file and make sure relavent information is added in execution notes
-- **Commit:** TODO (engineer)
+- **Commit:** 17862b2
 
 ## #9 — scenario-a Task: A5 (2026-09-27)
 
@@ -73,4 +73,12 @@
 - **Prompt:** Implement A5 from docs/scenario-a.md (GET /audit/events) following the decisions in docs/scenario-a.md and docs/scenario-b.md, reusing existing modules, with unit and integration tests; make check passes. Add A5 execution notes to docs/scenario-a.md without modifying existing notes, following the existing table format.
 - **Decision:** Accepted
 - **Rationale:** Checked code changes, tested GET /audit/events using swagger fastapi
+- **Commit:** 2d7a969
+
+## #10 — scenario-a Tasks: A6 & A7 (2026-09-27)
+
+- **Category:** Implementation
+- **Prompt:** Implement A6 (verify logic) and A7 (GET /audit/verify) from docs/scenario-a.md following the decisions in docs/scenario-a.md and docs/scenario-b.md, reusing the A2 hashing module, with verify logic in the domain layer and a thin endpoint; unit tests for the logic, integration tests for the endpoint, make check passes. Add execution notes for each task to docs/scenario-a.md without modifying existing notes, following the existing table format.
+- **Decision:** Accepted
+- **Rationale:** Checked code changes, tested GET /audit/verify using swagger fastapi. Deleted records in the DB and checked response.
 - **Commit:** TODO (engineer)

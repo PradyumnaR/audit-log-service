@@ -1,6 +1,6 @@
 """Persistence operations for the append-only ``audit_events`` table."""
 
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -141,3 +141,19 @@ def query_events(
         records = records[:limit]
         return EventPage(records=records, next_after_id=records[-1].id)
     return EventPage(records=records, next_after_id=None)
+
+
+CHAIN_BATCH_SIZE = 500
+
+
+def iter_chain(session: Session) -> Iterator[AuditEvent]:
+    """Yield every record, archived or not, in chain (id) order.
+
+    Rows are fetched in batches so verification does not load the whole table at once. On
+    SQLite the read runs under the write lock (see ``make_engine``), so appends wait and the
+    walk sees one consistent chain.
+    """
+    statement = (
+        select(AuditEvent).order_by(AuditEvent.id).execution_options(yield_per=CHAIN_BATCH_SIZE)
+    )
+    yield from session.scalars(statement)
