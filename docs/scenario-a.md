@@ -176,6 +176,10 @@ Violation types: CONTENT_HASH_MISMATCH, BROKEN_LINK
 | 8   | A4   | POST validation | `EventCreate` rejects missing/unknown/server-owned fields, coerced types, bad UPPER_SNAKE_CASE, IDs over 255 chars or with whitespace, payload over 16 KiB or NaN (`422`) |
 | 9   | A4   | API             | Returns `201`; `422` body omits `input`; `PUT`/`PATCH`/`DELETE` give `405`, `/audit/events/{id}` gives `404`; `create_app` wires engine and per-request `Session`        |
 | 10  | A4   | Config          | `config.py`: `SENSITIVE_FIELDS` (comma-separated, empty default), `DATABASE_URL` (default `sqlite:///./audit_log.db`)                                                     |
+| 11  | A5   | Query           | `query_events` in `storage/repository.py`: non-archived records in `id` order; keyset pagination (`id > cursor`), fetches `limit + 1` to set `nextCursor` (string id, `null` on last page) |
+| 12  | A5   | GET validation  | `EventQuery` rejects unknown params, bad filter formats, `resourceId` without `resourceType`, `from >= to`, `limit` outside 1–200 (default 50), bad cursors (`422`) |
+| 13  | A5   | Time range      | `from`/`to` need ISO 8601 with `Z` or offset (epochs/naive refused); normalized to stored UTC string, fractional seconds rounded up so `>= from` / `< to` stay exact |
+| 14  | A5   | API             | Items add `contentHash`, `previousHash`; salts never returned; sensitive key with field hash but no salt shown as `"[REDACTED]"` (scenario B)                               |
 
 ## 7. Validation
 

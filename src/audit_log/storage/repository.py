@@ -29,6 +29,26 @@ class NewEvent:
     payload: Mapping[str, Any]
 
 
+@dataclass(frozen=True)
+class EventFilter:
+    """Query filters; ``None`` means "any". Timestamps are canonical UTC strings."""
+
+    event_type: str | None = None
+    actor_id: str | None = None
+    resource_type: str | None = None
+    resource_id: str | None = None
+    from_timestamp: str | None = None  # inclusive
+    to_timestamp: str | None = None  # exclusive
+
+
+@dataclass(frozen=True)
+class EventPage:
+    """One page of query results and the id to continue after, if more remain."""
+
+    records: list[AuditEvent]
+    next_after_id: int | None
+
+
 def _utc_now() -> datetime:
     return datetime.now(UTC)
 
@@ -87,3 +107,37 @@ def append_event(
     session.add(record)
     session.commit()
     return record
+
+
+def query_events(
+    session: Session, event_filter: EventFilter, *, limit: int, after_id: int | None = None
+) -> EventPage:
+    """Return up to ``limit`` non-archived records matching ``event_filter``, in id order.
+
+    Pagination is keyset-based on ``id``: pass the previous page's ``next_after_id`` as
+    ``after_id`` to continue. Archived records are excluded because their content is gone.
+    Timestamps are fixed-format strings, so text comparison matches time order.
+    """
+    if limit < 1:
+        raise ValueError("limit must be at least 1")
+    statement = select(AuditEvent).where(AuditEvent.archived.is_(False))
+    if event_filter.event_type is not None:
+        statement = statement.where(AuditEvent.event_type == event_filter.event_type)
+    if event_filter.actor_id is not None:
+        statement = statement.where(AuditEvent.actor_id == event_filter.actor_id)
+    if event_filter.resource_type is not None:
+        statement = statement.where(AuditEvent.resource_type == event_filter.resource_type)
+    if event_filter.resource_id is not None:
+        statement = statement.where(AuditEvent.resource_id == event_filter.resource_id)
+    if event_filter.from_timestamp is not None:
+        statement = statement.where(AuditEvent.timestamp >= event_filter.from_timestamp)
+    if event_filter.to_timestamp is not None:
+        statement = statement.where(AuditEvent.timestamp < event_filter.to_timestamp)
+    if after_id is not None:
+        statement = statement.where(AuditEvent.id > after_id)
+    # Fetch one extra row to learn whether another page exists.
+    records = list(session.scalars(statement.order_by(AuditEvent.id).limit(limit + 1)))
+    if len(records) > limit:
+        records = records[:limit]
+        return EventPage(records=records, next_after_id=records[-1].id)
+    return EventPage(records=records, next_after_id=None)

@@ -196,9 +196,9 @@ def test_no_update_or_delete(
     assert _count(engine) == 1
 
 
-def test_openapi_exposes_only_post_on_events(client: TestClient) -> None:
+def test_openapi_exposes_only_get_and_post_on_events(client: TestClient) -> None:
     paths = client.get("/openapi.json").json()["paths"]
-    assert set(paths["/audit/events"]) == {"post"}
+    assert set(paths["/audit/events"]) == {"get", "post"}
     assert not [path for path in paths if path.startswith("/audit/events/")]
 
 

@@ -1,7 +1,7 @@
 """Unit tests for appending chained records to the audit_events table."""
 
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -13,7 +13,13 @@ from sqlalchemy.orm import Session
 from audit_log.domain.hashing import GENESIS_HASH, compute_content_hash, compute_field_hash
 from audit_log.storage.database import create_schema, make_engine
 from audit_log.storage.models import AuditEvent
-from audit_log.storage.repository import NewEvent, append_event, latest_hash
+from audit_log.storage.repository import (
+    EventFilter,
+    NewEvent,
+    append_event,
+    latest_hash,
+    query_events,
+)
 
 FIXED_NOW = datetime(2026, 9, 24, 14, 32, 10, 500, tzinfo=UTC)
 
@@ -183,3 +189,123 @@ def test_sqlite_transactions_take_write_lock_immediately(tmp_path: Path) -> None
                 other.close()
     finally:
         engine.dispose()
+
+
+def _archive(session: Session, record_id: int) -> None:
+    session.execute(
+        text(
+            "UPDATE audit_events SET archived = 1, event_type = NULL, actor_id = NULL,"
+            " resource_type = NULL, resource_id = NULL, payload = NULL WHERE id = :id"
+        ),
+        {"id": record_id},
+    )
+    session.commit()
+
+
+def _clock(moment: datetime) -> Callable[[], datetime]:
+    return lambda: moment
+
+
+def _ids(session: Session, event_filter: EventFilter, **kwargs: Any) -> list[int]:
+    kwargs.setdefault("limit", 100)
+    return [record.id for record in query_events(session, event_filter, **kwargs).records]
+
+
+def test_query_returns_all_records_in_id_order(engine: Engine) -> None:
+    with Session(engine) as session:
+        for _ in range(3):
+            _append(session)
+        assert _ids(session, EventFilter()) == [1, 2, 3]
+
+
+def test_query_on_empty_table(engine: Engine) -> None:
+    with Session(engine) as session:
+        page = query_events(session, EventFilter(), limit=10)
+        assert page.records == []
+        assert page.next_after_id is None
+
+
+@pytest.mark.parametrize(
+    ("event_filter", "expected"),
+    [
+        pytest.param(EventFilter(event_type="USER_LOGIN"), [2], id="event-type"),
+        pytest.param(EventFilter(actor_id="user-2001"), [3], id="actor"),
+        pytest.param(EventFilter(resource_type="USER"), [4], id="resource-type"),
+        pytest.param(
+            EventFilter(resource_type="ACCOUNT", resource_id="acct-2"), [3], id="resource"
+        ),
+        pytest.param(
+            EventFilter(resource_type="USER", resource_id="acct-88731"), [], id="id-other-type"
+        ),
+        pytest.param(
+            EventFilter(resource_type="ACCOUNT", actor_id="user-1042"), [1, 2], id="combined"
+        ),
+    ],
+)
+def test_query_filters(engine: Engine, event_filter: EventFilter, expected: list[int]) -> None:
+    with Session(engine) as session:
+        _append(session)
+        _append(session, event_type="USER_LOGIN")
+        _append(session, actor_id="user-2001", resource_id="acct-2")
+        _append(session, actor_id="user-3001", resource_type="USER", resource_id="acct-2")
+        assert _ids(session, event_filter) == expected
+
+
+def test_query_time_range_is_from_inclusive_to_exclusive(engine: Engine) -> None:
+    times = [datetime(2026, 9, 24, 10, minute, tzinfo=UTC) for minute in (0, 1, 2)]
+    with Session(engine) as session:
+        for moment in times:
+            append_event(session, _new_event(), sensitive_fields=(), now=_clock(moment))
+        window = EventFilter(from_timestamp="2026-09-24T10:01:00Z")
+        assert _ids(session, window) == [2, 3]
+        window = EventFilter(to_timestamp="2026-09-24T10:01:00Z")
+        assert _ids(session, window) == [1]
+        window = EventFilter(
+            from_timestamp="2026-09-24T10:00:00Z", to_timestamp="2026-09-24T10:02:00Z"
+        )
+        assert _ids(session, window) == [1, 2]
+
+
+def test_query_pages_with_after_id(engine: Engine) -> None:
+    with Session(engine) as session:
+        for _ in range(5):
+            _append(session)
+        first = query_events(session, EventFilter(), limit=2)
+        assert [record.id for record in first.records] == [1, 2]
+        assert first.next_after_id == 2
+        second = query_events(session, EventFilter(), limit=2, after_id=first.next_after_id)
+        assert [record.id for record in second.records] == [3, 4]
+        assert second.next_after_id == 4
+        last = query_events(session, EventFilter(), limit=2, after_id=second.next_after_id)
+        assert [record.id for record in last.records] == [5]
+        assert last.next_after_id is None
+
+
+def test_query_exact_final_page_has_no_next(engine: Engine) -> None:
+    with Session(engine) as session:
+        for _ in range(2):
+            _append(session)
+        assert query_events(session, EventFilter(), limit=2).next_after_id is None
+
+
+def test_query_pages_skip_non_matching_records(engine: Engine) -> None:
+    with Session(engine) as session:
+        for actor in ["a", "b", "a", "b", "a"]:
+            _append(session, actor_id=actor)
+        page = query_events(session, EventFilter(actor_id="a"), limit=1, after_id=1)
+        assert [record.id for record in page.records] == [3]
+        assert page.next_after_id == 3
+
+
+def test_query_excludes_archived_records(engine: Engine) -> None:
+    with Session(engine) as session:
+        for _ in range(3):
+            _append(session)
+        _archive(session, 1)
+        assert _ids(session, EventFilter()) == [2, 3]
+        assert _ids(session, EventFilter(actor_id="user-1042")) == [2, 3]
+
+
+def test_query_rejects_non_positive_limit(engine: Engine) -> None:
+    with Session(engine) as session, pytest.raises(ValueError, match="limit"):
+        query_events(session, EventFilter(), limit=0)

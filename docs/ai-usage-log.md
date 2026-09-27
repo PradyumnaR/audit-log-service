@@ -66,3 +66,11 @@
 - **Decision:** Accepted
 - **Rationale:** Checked scenario-a.md file and make sure relavent information is added in execution notes
 - **Commit:** TODO (engineer)
+
+## #9 — scenario-a Task: A5 (2026-09-27)
+
+- **Category:** Implementation
+- **Prompt:** Implement A5 from docs/scenario-a.md (GET /audit/events) following the decisions in docs/scenario-a.md and docs/scenario-b.md, reusing existing modules, with unit and integration tests; make check passes. Add A5 execution notes to docs/scenario-a.md without modifying existing notes, following the existing table format.
+- **Decision:** Accepted
+- **Rationale:** Checked code changes, tested GET /audit/events using swagger fastapi
+- **Commit:** TODO (engineer)
