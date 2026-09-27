@@ -33,4 +33,12 @@
 - **Prompt:** Update docs/architecture.md with scenario-b and scenario-c using the questions and decisions from the scenario docs, extending Summary and adding one Architecture table row per scenario in the same structure as scenario-a, without deleting or changing existing content.
 - **Decision:** Accepted
 - **Rationale:** Reviewd scenario-c.md file decisions updated in architecture.md file
+- **Commit:** 6a25cb7
+
+## #5 — feat: scenario-a Tasks: A1 & A2 (2026-09-27)
+
+- **Category:** Implementation, Test generation
+- **Prompt:** Implement A1 and A2 from docs/scenario-a.md: the audit_events table (snake_case columns including archived, field_hashes, field_salts) and a single reusable hashing module using SHA-256 over canonical JSON, with salted field hashes for SENSITIVE_FIELDS used in place of raw values in the content hash, and no endpoints. Acceptance: unit tests show key-order independence, that changing any hashed field changes the hash, and that sensitive fields hash via their field hash; make check passes.
+- **Decision:** Accepted
+- **Rationale:** Verified table schema changes, hash logic, Ran test cases.
 - **Commit:** TODO (engineer)
