@@ -164,7 +164,18 @@ Violation types: CONTENT_HASH_MISMATCH, BROKEN_LINK
 
 ## 6. Execution notes
 
-{Filled during build.}
+| #   | Task | Area            | Notes                                                                                                                                                                  |
+| --- | ---- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | A1   | Storage         | `audit_events` in `storage/models.py`; `id` is SQLite `AUTOINCREMENT` (chain order, never reused); `timestamp` stored as the exact hashed string `YYYY-MM-DDTHH:MM:SSZ` |
+| 2   | A1   | Storage         | Also holds `content_hash`, `previous_hash`, `archived`, `field_hashes`, `field_salts`; content columns nullable only for retention, check constraint on non-archived rows |
+| 3   | A2   | Hashing         | All in `domain/hashing.py`, stdlib only; canonical JSON = `sort_keys=True`, `separators=(",", ":")`, `ensure_ascii=False`, `allow_nan=False`, UTF-8                     |
+| 4   | A2   | Hashing         | Content hash covers event fields, timestamp, payload (sensitive keys removed), `fieldHashes`, `previousHash`; `archived` and `fieldSalts` excluded                      |
+| 5   | A2   | Hashing         | Field hash = SHA-256(32-byte salt + canonical value); genesis `6a09e667...5be0cd19` from square roots of first 8 primes                                                  |
+| 6   | A3   | Append          | `append_event` in one transaction: read last `content_hash` (or genesis), set server timestamp, hash `SENSITIVE_FIELDS`, compute content hash, insert                    |
+| 7   | A3   | Write lock      | `make_engine` issues `BEGIN IMMEDIATE`, so parallel appends run one at a time and timestamps never decrease in `id` order                                                |
+| 8   | A4   | POST validation | `EventCreate` rejects missing/unknown/server-owned fields, coerced types, bad UPPER_SNAKE_CASE, IDs over 255 chars or with whitespace, payload over 16 KiB or NaN (`422`) |
+| 9   | A4   | API             | Returns `201`; `422` body omits `input`; `PUT`/`PATCH`/`DELETE` give `405`, `/audit/events/{id}` gives `404`; `create_app` wires engine and per-request `Session`        |
+| 10  | A4   | Config          | `config.py`: `SENSITIVE_FIELDS` (comma-separated, empty default), `DATABASE_URL` (default `sqlite:///./audit_log.db`)                                                     |
 
 ## 7. Validation
 

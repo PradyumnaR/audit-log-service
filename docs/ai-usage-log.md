@@ -57,4 +57,12 @@
 - **Prompt:** Implement A4 from docs/scenario-a.md (POST /audit/events) following the decisions in docs/scenario-a.md and docs/scenario-b.md, reusing the append logic from A3; make check passes.
 - **Decision:** Accepted
 - **Rationale:** Checked code changes, tested POST /audit/events using swagger fastapi.
+- **Commit:** 309f81b
+
+## #8 — docs: restructuring (scenario-a & architecture) (2026-09-27)
+
+- **Category:** Documentation
+- **Prompt:** Move the Implementation section (Hashing, Appending to the chain, API: POST, Configuration) from docs/architecture.md into section 6. Execution notes of docs/scenario-a.md as a table of at most 10 rows.
+- **Decision:** Accepted
+- **Rationale:** Checked scenario-a.md file and make sure relavent information is added in execution notes
 - **Commit:** TODO (engineer)
