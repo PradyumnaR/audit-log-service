@@ -105,6 +105,11 @@ GET /audit/export?resourceType=ACCOUNT&resourceId=acct-88731
 | 6   | B2   | Verify    | Reused unchanged `verify_chain`: archived records get the link check only; archived after non-archived is `INVALID_ARCHIVE` (both already built in A6)                                                             |
 | 7   | B2   | Tests     | Unit `test_retention.py` and integration `test_retention_script.py` (runs the real script): verify intact after retention at several windows, new appends still link, out-of-order archive gives `INVALID_ARCHIVE` |
 | 8   | B1   | Change    | Replaced `RETENTION_DAYS` config with required `make retention BEFORE=…` cutoff per §4; removed `config.retention_days()` and its tests; unit + integration tests cover missing, invalid, non-`Z`, fractional and future values |
+| 9   | B3   | Hashing   | Already built in A2/A6: `protect_sensitive_fields` salts + field-hashes `SENSITIVE_FIELDS` keys on append, content hash uses the field hash, verify checks value against field hash; only change: value check extracted to shared `field_hash_matches` in `domain/hashing.py` |
+| 10  | B4   | Redaction | `redact_field` in `storage/repository.py`: removes the payload key and its salt, keeps `fieldHashes` and every stored hash; one transaction under the write lock; responses show `"[REDACTED]"` (existing `EventRecord.from_record`) |
+| 11  | B4   | Refusals  | Field not in `SENSITIVE_FIELDS`, unknown or archived record, record without that field hash, already redacted, and (added) value not matching its field hash, so redaction can't erase evidence of an edit; nothing changes on refusal |
+| 12  | B4   | Script    | `operations/redaction.py` (`run_redaction`, `main`), thin `scripts/redact.py`; `make redact ID=… FIELD=…` passes `--id`/`--field` and `--env-file .env` when present; exit `0` done, `1` refused, `2` missing/invalid arguments |
+| 13  | B4   | Tests     | Unit `test_redaction.py` (hashes unchanged, verify intact, `[REDACTED]` response, every refusal leaves the row untouched, CLI args) and integration `test_redact_script.py` (runs the real script; verify intact, new appends link, refusals) |
 
 ## 8. Validation
 

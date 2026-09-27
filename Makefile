@@ -1,15 +1,22 @@
-.PHONY: install run test lint typecheck security check retention
+.PHONY: install run test lint typecheck security check retention redact
+
+ENV_FILE := $(if $(wildcard .env),--env-file .env,)
 
 install:
 	uv sync
 
 run:
-	uv run uvicorn audit_log.api.app:app --reload
+	uv run $(ENV_FILE) uvicorn audit_log.api.app:app --reload
 
 # Operator task: archive records older than BEFORE (ISO 8601 UTC with Z), e.g.
 #   make retention BEFORE=2026-01-01T00:00:00Z
 retention:
-	uv run $(if $(wildcard .env),--env-file .env) python scripts/run_retention.py $(if $(BEFORE),--before "$(BEFORE)")
+	uv run $(ENV_FILE) python scripts/run_retention.py $(if $(BEFORE),--before "$(BEFORE)")
+
+# Operator task: remove the value and salt of sensitive FIELD from record ID, e.g.
+#   make redact ID=3 FIELD=accountNumber
+redact:
+	uv run $(ENV_FILE) python scripts/redact.py $(if $(ID),--id "$(ID)") $(if $(FIELD),--field "$(FIELD)")
 
 test:
 	uv run pytest

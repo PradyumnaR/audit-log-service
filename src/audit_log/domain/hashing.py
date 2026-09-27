@@ -85,6 +85,14 @@ def compute_field_hash(salt: str, value: Any) -> str:
     return sha256_hex(salt_bytes + canonical_json(value).encode("utf-8"))
 
 
+def field_hash_matches(salt: str, value: Any, field_hash: str) -> bool:
+    """Return whether ``value`` with ``salt`` reproduces ``field_hash``; False for a bad salt."""
+    try:
+        return compute_field_hash(salt, value) == field_hash
+    except ValueError:  # salt edited to invalid hex or the wrong length
+        return False
+
+
 @dataclass(frozen=True)
 class ProtectedFields:
     """Field hashes and salts produced for a payload's sensitive keys."""

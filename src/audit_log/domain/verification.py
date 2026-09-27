@@ -28,7 +28,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, Protocol
 
-from audit_log.domain.hashing import GENESIS_HASH, compute_content_hash, compute_field_hash
+from audit_log.domain.hashing import GENESIS_HASH, compute_content_hash, field_hash_matches
 
 
 class ViolationType(StrEnum):
@@ -145,15 +145,8 @@ def _content_problem(record: ChainRecord) -> str | None:
     for key in sorted(record.field_hashes):
         if key not in record.payload or key not in record.field_salts:
             continue  # redacted
-        if not _field_matches(
+        if not field_hash_matches(
             record.field_salts[key], record.payload[key], record.field_hashes[key]
         ):
             return f"Value of sensitive field {key!r} does not match its field hash"
     return None
-
-
-def _field_matches(salt: str, value: Any, field_hash: str) -> bool:
-    try:
-        return compute_field_hash(salt, value) == field_hash
-    except ValueError:  # salt edited to invalid hex or the wrong length
-        return False

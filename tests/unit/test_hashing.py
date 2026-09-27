@@ -14,6 +14,7 @@ from audit_log.domain.hashing import (
     canonical_json,
     compute_content_hash,
     compute_field_hash,
+    field_hash_matches,
     format_timestamp,
     generate_salt,
     hashable_payload,
@@ -169,6 +170,14 @@ def test_field_hash_depends_on_salt_and_value() -> None:
 def test_field_hash_rejects_bad_salt(salt: str) -> None:
     with pytest.raises(ValueError):
         compute_field_hash(salt, "value")
+
+
+def test_field_hash_matches_value_salt_and_rejects_bad_salt() -> None:
+    field_hash = compute_field_hash(SALT, "123456789")
+    assert field_hash_matches(SALT, "123456789", field_hash)
+    assert not field_hash_matches(SALT, "123456780", field_hash)
+    assert not field_hash_matches(OTHER_SALT, "123456789", field_hash)
+    assert not field_hash_matches("not-hex", "123456789", field_hash)
 
 
 def test_protect_sensitive_fields_only_covers_present_sensitive_keys() -> None:

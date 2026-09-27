@@ -97,4 +97,12 @@
 - **Prompt:** Change retention per docs/scenario-b.md: remove RETENTION_DAYS entirely (config, .env.example, validation); scripts/run_retention.py takes a required --before argument (ISO 8601 UTC with Z) and archives records with timestamp strictly earlier than it, rejecting missing, invalid, or future values. Update the Makefile so make retention BEFORE=... passes it through, update tests; make check passes.
 - **Decision:** Accepted
 - **Rationale:** Modified logic to pass retention time as a parameter to script. Look at Makefile how th param is passed
+- **Commit:** 96fb68e
+
+## #13 — scenario-b redaction logic (2026-09-27)
+
+- **Category:** Implementation
+- **Prompt:** Implement B3 and B4 from docs/scenario-b.md, adding scripts/redact.py and a make redact target (make redact ID=… FIELD=…), reusing the existing hashing and verify logic; make check passes.
+- **Decision:** TODO (engineer)
+- **Rationale:** TODO (engineer)
 - **Commit:** TODO (engineer)

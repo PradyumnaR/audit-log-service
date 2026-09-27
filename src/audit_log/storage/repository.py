@@ -12,6 +12,7 @@ from audit_log.config import sensitive_fields as configured_sensitive_fields
 from audit_log.domain.hashing import (
     GENESIS_HASH,
     compute_content_hash,
+    field_hash_matches,
     format_timestamp,
     protect_sensitive_fields,
 )
@@ -199,3 +200,59 @@ def archive_before(session: Session, before: datetime) -> int:
     result = cast(CursorResult[Any], session.execute(statement))
     session.commit()
     return result.rowcount
+
+
+class RedactionRefusedError(ValueError):
+    """``redact_field`` refused the request; nothing was changed."""
+
+
+def redact_field(
+    session: Session,
+    record_id: int,
+    field: str,
+    *,
+    sensitive_fields: Iterable[str] | None = None,
+) -> None:
+    """Remove the raw value and salt of sensitive ``field`` from record ``record_id``; commit.
+
+    The field hash stays, and the content hash already covers the field hash rather than
+    the raw value, so no stored hash changes and the chain still verifies. Responses show
+    the field as ``[REDACTED]``.
+
+    Refused (``RedactionRefusedError``, nothing changed) when ``field`` is not in
+    ``sensitive_fields`` (defaults to the ``SENSITIVE_FIELDS`` config), the record does not
+    exist or is archived, the record has no field hash for ``field``, the field is already
+    redacted, or the stored value no longer matches its field hash (redacting would destroy
+    the evidence of that edit). On SQLite the transaction holds the write lock (see
+    ``make_engine``).
+    """
+    if sensitive_fields is None:
+        sensitive_fields = configured_sensitive_fields()
+    try:
+        if field not in set(sensitive_fields):
+            raise RedactionRefusedError(f"field {field!r} is not in SENSITIVE_FIELDS")
+        record = session.get(AuditEvent, record_id)
+        if record is None:
+            raise RedactionRefusedError(f"record {record_id} does not exist")
+        if record.archived or record.payload is None:
+            raise RedactionRefusedError(f"record {record_id} is archived")
+        if field not in record.field_hashes:
+            raise RedactionRefusedError(f"record {record_id} has no sensitive field {field!r}")
+        if field not in record.payload or field not in record.field_salts:
+            raise RedactionRefusedError(
+                f"field {field!r} of record {record_id} is already redacted"
+            )
+        if not field_hash_matches(
+            record.field_salts[field], record.payload[field], record.field_hashes[field]
+        ):
+            raise RedactionRefusedError(
+                f"field {field!r} of record {record_id} does not match its field hash;"
+                " run verify before redacting"
+            )
+    except RedactionRefusedError:
+        session.rollback()
+        raise
+    # Assign new dicts: in-place mutation of JSON columns is not tracked by SQLAlchemy.
+    record.payload = {key: value for key, value in record.payload.items() if key != field}
+    record.field_salts = {key: value for key, value in record.field_salts.items() if key != field}
+    session.commit()
