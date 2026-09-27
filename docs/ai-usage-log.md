@@ -26,3 +26,11 @@
   - Export: kept resourceType required with resourceId, although the brief says "resourceId or actorId", for consistency with the query rule. Chose not to sign bundles; documented it as a limitation with the mitigation instead.
   - Redaction changes what Scenario A hashes, so updated scenario-a.md before building.
 - **Commit:** fd9be51f
+
+## #4 — Updated with scenario-c and add architecture for scenario-b & scenario-c (2026-09-27)
+
+- **Category:** Analysis/Design
+- **Prompt:** Update docs/architecture.md with scenario-b and scenario-c using the questions and decisions from the scenario docs, extending Summary and adding one Architecture table row per scenario in the same structure as scenario-a, without deleting or changing existing content.
+- **Decision:** Accepted
+- **Rationale:** Reviewd scenario-c.md file decisions updated in architecture.md file
+- **Commit:** TODO (engineer)
