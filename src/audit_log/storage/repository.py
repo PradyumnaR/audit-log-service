@@ -2,10 +2,10 @@
 
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
-from typing import Any
+from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 
-from sqlalchemy import select
+from sqlalchemy import CursorResult, func, select, update
 from sqlalchemy.orm import Session
 
 from audit_log.config import sensitive_fields as configured_sensitive_fields
@@ -157,3 +157,47 @@ def iter_chain(session: Session) -> Iterator[AuditEvent]:
         select(AuditEvent).order_by(AuditEvent.id).execution_options(yield_per=CHAIN_BATCH_SIZE)
     )
     yield from session.scalars(statement)
+
+
+def archive_expired(
+    session: Session, retention_days: int, *, now: Callable[[], datetime] = _utc_now
+) -> int:
+    """Archive every record older than ``retention_days`` and commit; return how many.
+
+    Archiving sets ``archived`` and clears the event content, field hashes and salts,
+    keeping only ``id``, ``timestamp``, ``contentHash`` and ``previousHash`` so the chain
+    stays linked. None of the kept values change, so no stored hash changes.
+
+    Records are archived as an id prefix: everything up to the newest record older than the
+    cutoff. Timestamps never decrease in id order (see ``append_event``), so this is the
+    same set as "older than the cutoff", and archived records always form one continuous
+    block from the first record, as verification requires. On SQLite the transaction holds
+    the write lock (see ``make_engine``), so appends wait until it commits.
+    """
+    if retention_days < 1:
+        raise ValueError("retention_days must be at least 1")
+    cutoff = format_timestamp(now() - timedelta(days=retention_days))
+    last_expired_id = session.scalar(
+        select(func.max(AuditEvent.id)).where(AuditEvent.timestamp < cutoff)
+    )
+    if last_expired_id is None:
+        session.commit()
+        return 0
+    statement = (
+        update(AuditEvent)
+        .where(AuditEvent.id <= last_expired_id, AuditEvent.archived.is_(False))
+        .values(
+            archived=True,
+            event_type=None,
+            actor_id=None,
+            resource_type=None,
+            resource_id=None,
+            payload=None,
+            field_hashes={},
+            field_salts={},
+        )
+    )
+    # DML statements return a CursorResult, which carries the matched row count.
+    result = cast(CursorResult[Any], session.execute(statement))
+    session.commit()
+    return result.rowcount

@@ -81,4 +81,12 @@
 - **Prompt:** Implement A6 (verify logic) and A7 (GET /audit/verify) from docs/scenario-a.md following the decisions in docs/scenario-a.md and docs/scenario-b.md, reusing the A2 hashing module, with verify logic in the domain layer and a thin endpoint; unit tests for the logic, integration tests for the endpoint, make check passes. Add execution notes for each task to docs/scenario-a.md without modifying existing notes, following the existing table format.
 - **Decision:** Accepted
 - **Rationale:** Checked code changes, tested GET /audit/verify using swagger fastapi. Deleted records in the DB and checked response.
+- **Commit:** 0f4e5b7
+
+## #11 — scenario-b Tasks: B1 & B2 (2026-09-27)
+
+- **Category:** Implementation
+- **Prompt:** Implement B1 (archive columns + retention script) and B2 (verify handles archived records) from docs/scenario-b.md following its decisions, adding a make retention target that runs scripts/run_retention.py and reusing the existing verify logic extended for archived records and INVALID_ARCHIVE; make check passes.
+- **Decision:** Rejected
+- **Rationale:** Remove retention days value form .env config value. Instead Use timestamp passed by the operator while running script
 - **Commit:** TODO (engineer)

@@ -24,7 +24,7 @@ Python 3.13, FastAPI, Pydantic, SQLAlchemy, SQLite, pytest, ruff, mypy, bandit, 
 
 - Acceptance criteria in docs/scenario-\*.md met
 - make check passes
-- Execution notes in the relevant scenario doc updated briefly (a few bullets)
+- Execution notes in the relevant scenario doc updated briefly (in table format per task; update with summary)
 
 ## References
 
