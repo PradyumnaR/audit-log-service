@@ -14,6 +14,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from audit_log.api.app import create_app
+from audit_log.domain.hashing import format_timestamp
 from audit_log.storage.database import create_schema, make_engine
 from audit_log.storage.repository import NewEvent, append_event
 
@@ -63,11 +64,14 @@ def _seed(engine: Engine, ages_in_days: list[int]) -> None:
             )
 
 
-def _run_script(db_url: str, **env: str) -> subprocess.CompletedProcess[str]:
-    child_env = {k: v for k, v in os.environ.items() if k != "RETENTION_DAYS"}
-    child_env.update(DATABASE_URL=db_url, **env)
+def _days_ago(days: int) -> str:
+    return format_timestamp(datetime.now(UTC) - timedelta(days=days))
+
+
+def _run_script(db_url: str, *args: str) -> subprocess.CompletedProcess[str]:
+    child_env = {**os.environ, "DATABASE_URL": db_url}
     return subprocess.run(  # noqa: S603 - fixed argv (this repo's script), no shell
-        [sys.executable, str(SCRIPT)],
+        [sys.executable, str(SCRIPT), *args],
         env=child_env,
         capture_output=True,
         text=True,
@@ -87,7 +91,7 @@ def test_script_archives_old_records_and_verify_passes(
 ) -> None:
     _seed(engine, [90, 45, 31, 10, 0])
 
-    result = _run_script(db_url, RETENTION_DAYS="30")
+    result = _run_script(db_url, "--before", _days_ago(30))
 
     assert result.returncode == 0, result.stderr
     assert "archived 3 record(s)" in result.stdout
@@ -100,7 +104,7 @@ def test_new_events_after_retention_keep_chain_intact(
     client: TestClient, engine: Engine, db_url: str
 ) -> None:
     _seed(engine, [90, 45])
-    assert _run_script(db_url, RETENTION_DAYS="30").returncode == 0
+    assert _run_script(db_url, "--before", _days_ago(30)).returncode == 0
 
     body = {
         "eventType": "RECORD_UPDATED",
@@ -118,7 +122,7 @@ def test_archive_out_of_order_after_retention_is_invalid_archive(
     client: TestClient, engine: Engine, db_url: str
 ) -> None:
     _seed(engine, [90, 45, 10, 0])
-    assert _run_script(db_url, RETENTION_DAYS="30").returncode == 0
+    assert _run_script(db_url, "--before", _days_ago(30)).returncode == 0
     with Session(engine) as session:
         session.connection().exec_driver_sql("UPDATE audit_events SET archived = 1 WHERE id = 4")
         session.commit()
@@ -130,13 +134,22 @@ def test_archive_out_of_order_after_retention_is_invalid_archive(
     assert data["violationType"] == "INVALID_ARCHIVE"
 
 
-def test_script_without_retention_days_fails_and_changes_nothing(
-    client: TestClient, engine: Engine, db_url: str
+@pytest.mark.parametrize(
+    ("args", "message"),
+    [
+        pytest.param((), "the following arguments are required: --before", id="missing"),
+        pytest.param(("--before", "2026-13-01T00:00:00Z"), "not a valid", id="invalid"),
+        pytest.param(("--before", "2026-01-01T00:00:00+02:00"), "ISO 8601", id="not-z"),
+        pytest.param(("--before", "2999-01-01T00:00:00Z"), "future", id="future"),
+    ],
+)
+def test_script_with_bad_before_fails_and_changes_nothing(
+    client: TestClient, engine: Engine, db_url: str, args: tuple[str, ...], message: str
 ) -> None:
     _seed(engine, [90])
 
-    result = _run_script(db_url)
+    result = _run_script(db_url, *args)
 
-    assert result.returncode == 1
-    assert "RETENTION_DAYS is not set" in result.stderr
+    assert result.returncode == 2
+    assert message in result.stderr
     assert len(_json(client, "/audit/events")["items"]) == 1

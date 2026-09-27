@@ -2,7 +2,7 @@
 
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any, cast
 
 from sqlalchemy import CursorResult, func, select, update
@@ -159,10 +159,8 @@ def iter_chain(session: Session) -> Iterator[AuditEvent]:
     yield from session.scalars(statement)
 
 
-def archive_expired(
-    session: Session, retention_days: int, *, now: Callable[[], datetime] = _utc_now
-) -> int:
-    """Archive every record older than ``retention_days`` and commit; return how many.
+def archive_before(session: Session, before: datetime) -> int:
+    """Archive every record with a timestamp strictly earlier than ``before``; return how many.
 
     Archiving sets ``archived`` and clears the event content, field hashes and salts,
     keeping only ``id``, ``timestamp``, ``contentHash`` and ``previousHash`` so the chain
@@ -174,9 +172,9 @@ def archive_expired(
     block from the first record, as verification requires. On SQLite the transaction holds
     the write lock (see ``make_engine``), so appends wait until it commits.
     """
-    if retention_days < 1:
-        raise ValueError("retention_days must be at least 1")
-    cutoff = format_timestamp(now() - timedelta(days=retention_days))
+    if before.microsecond:
+        raise ValueError("before must be a whole second")
+    cutoff = format_timestamp(before)
     last_expired_id = session.scalar(
         select(func.max(AuditEvent.id)).where(AuditEvent.timestamp < cutoff)
     )

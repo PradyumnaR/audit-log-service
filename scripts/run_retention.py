@@ -1,4 +1,4 @@
-"""Archive audit records older than RETENTION_DAYS. Run with ``make retention``."""
+"""Archive audit records older than a cutoff. Run with ``make retention BEFORE=...``."""
 
 from audit_log.operations.retention import main
 

@@ -1,4 +1,4 @@
-"""Unit tests for retention: archiving records older than the retention window."""
+"""Unit tests for retention: archiving records older than a cutoff."""
 
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
@@ -15,7 +15,7 @@ from audit_log.storage.repository import (
     EventFilter,
     NewEvent,
     append_event,
-    archive_expired,
+    archive_before,
     iter_chain,
     query_events,
 )
@@ -50,7 +50,8 @@ def _seed(session: Session, ages_in_days: list[float]) -> None:
 
 
 def _archive(session: Session, days: int) -> int:
-    return archive_expired(session, days, now=lambda: NOW)
+    """Archive with a cutoff ``days`` before ``NOW``."""
+    return archive_before(session, NOW - timedelta(days=days))
 
 
 def _chain(session: Session) -> list[AuditEvent]:
@@ -116,9 +117,16 @@ def test_rerun_only_counts_newly_archived(engine: Engine) -> None:
         assert [record.archived for record in _chain(session)] == [True, True, False]
 
 
-def test_rejects_non_positive_window(engine: Engine) -> None:
-    with Session(engine) as session, pytest.raises(ValueError, match="at least 1"):
-        _archive(session, 0)
+def test_cutoff_is_exclusive_to_the_second(engine: Engine) -> None:
+    with Session(engine) as session:
+        _append_at(session, NOW)
+        assert archive_before(session, NOW) == 0
+        assert archive_before(session, NOW + timedelta(seconds=1)) == 1
+
+
+def test_rejects_fractional_cutoff(engine: Engine) -> None:
+    with Session(engine) as session, pytest.raises(ValueError, match="whole second"):
+        archive_before(session, NOW.replace(microsecond=500))
 
 
 @pytest.mark.parametrize("days", [1, 10, 30, 365])
@@ -164,22 +172,63 @@ def test_archived_records_are_not_queried(engine: Engine) -> None:
 def test_run_retention_uses_engine(engine: Engine) -> None:
     with Session(engine) as session:
         _seed(session, [40, 1])
-    assert retention.run_retention(engine, 30, now=lambda: NOW) == 1
+    assert retention.run_retention(engine, NOW - timedelta(days=30)) == 1
 
 
-def test_main_reports_archived_count(
-    engine: Engine, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+def test_parse_cutoff_accepts_utc_z() -> None:
+    assert retention.parse_cutoff("2026-09-01T00:00:00Z", now=lambda: NOW) == datetime(
+        2026, 9, 1, tzinfo=UTC
+    )
+
+
+def test_parse_cutoff_accepts_now() -> None:
+    assert retention.parse_cutoff("2026-09-27T10:00:00Z", now=lambda: NOW) == NOW
+
+
+@pytest.mark.parametrize(
+    ("raw", "message"),
+    [
+        pytest.param("", "ISO 8601", id="empty"),
+        pytest.param("yesterday", "ISO 8601", id="not-a-date"),
+        pytest.param("2026-09-01", "ISO 8601", id="date-only"),
+        pytest.param("2026-09-01T00:00:00", "ISO 8601", id="no-zone"),
+        pytest.param("2026-09-01T00:00:00+00:00", "ISO 8601", id="offset-not-z"),
+        pytest.param("2026-09-01T00:00:00.5Z", "ISO 8601", id="fractional"),
+        pytest.param("2026-09-01 00:00:00Z", "ISO 8601", id="space-separator"),
+        pytest.param("1756684800", "ISO 8601", id="epoch"),
+        pytest.param("2026-02-30T00:00:00Z", "not a valid", id="impossible-date"),
+        pytest.param("2026-09-01T24:00:00Z", "not a valid", id="hour-24"),
+        pytest.param("2026-09-27T10:00:01Z", "future", id="future"),
+    ],
+)
+def test_parse_cutoff_rejects_invalid(raw: str, message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        retention.parse_cutoff(raw, now=lambda: NOW)
+
+
+def test_main_reports_archived_count(engine: Engine, capsys: pytest.CaptureFixture[str]) -> None:
+    with Session(engine) as session:
+        _seed(session, [40, 35, 1])
+    assert retention.main(["--before", "2026-08-28T10:00:00Z"], engine, now=lambda: NOW) == 0
+    assert "archived 2 record(s) older than 2026-08-28T10:00:00Z" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("argv", "message"),
+    [
+        pytest.param([], "the following arguments are required: --before", id="missing"),
+        pytest.param(["--before", "last-month"], "--before must be ISO 8601", id="invalid"),
+        pytest.param(["--before", "2026-09-28T00:00:00Z"], "in the future", id="future"),
+    ],
+)
+def test_main_rejects_bad_cutoff_and_archives_nothing(
+    engine: Engine, capsys: pytest.CaptureFixture[str], argv: list[str], message: str
 ) -> None:
     with Session(engine) as session:
-        _seed(session, [4000, 3000])
-    monkeypatch.setenv("RETENTION_DAYS", "30")
-    assert retention.main(engine) == 0
-    assert "archived 2 record(s) older than 30 day(s)" in capsys.readouterr().out
-
-
-def test_main_fails_without_retention_days(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    monkeypatch.delenv("RETENTION_DAYS", raising=False)
-    assert retention.main() == 1
-    assert "RETENTION_DAYS is not set" in capsys.readouterr().err
+        _seed(session, [40])
+    with pytest.raises(SystemExit) as exit_info:
+        retention.main(argv, engine, now=lambda: NOW)
+    assert exit_info.value.code == 2
+    assert message in capsys.readouterr().err
+    with Session(engine) as session:
+        assert [record.archived for record in _chain(session)] == [False]

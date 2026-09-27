@@ -84,7 +84,7 @@ GET /audit/export?resourceType=ACCOUNT&resourceId=acct-88731
 
 | #   | Task                               | Needs  | Done when                                                                                                                  |
 | --- | ---------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------- |
-| B1  | Archive columns + retention script | A      | make retention archives records older than RETENTION_DAYS and clears their content                                         |
+| B1  | Archive columns + retention script | A      | make retention BEFORE=… archives records earlier than BEFORE and clears their content                                       |
 | B2  | Verify handles archived records    | B1     | Archived records cause no false break; an archived record after a non-archived one reports INVALID_ARCHIVE                 |
 | B3  | Field hashes                       | A2     | Sensitive values stored with salt and field hash; content hash uses the field hash; verify checks value against field hash |
 | B4  | Redaction script                   | B3     | make redact removes value and salt; response shows "[REDACTED]"; verify still passes                                       |
@@ -98,12 +98,13 @@ GET /audit/export?resourceType=ACCOUNT&resourceId=acct-88731
 | #   | Task | Area      | Notes                                                                                                                                                                                                              |
 | --- | ---- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 1   | B1   | Storage   | `archived`, `field_hashes`, `field_salts` columns and the "content required unless archived" check constraint already existed from A1; no schema change needed                                                     |
-| 2   | B1   | Config    | `config.retention_days()` reads `RETENTION_DAYS`; required, positive integer; no default so a missing setting never archives by accident                                                                           |
-| 3   | B1   | Retention | `archive_expired` in `storage/repository.py`: cutoff = now − `RETENTION_DAYS` (strictly older is archived); archives the id prefix up to the newest expired record                                                 |
+| 2   | B1   | Config    | `--before` argument (was `RETENTION_DAYS`, now removed): required, ISO 8601 UTC with `Z`, whole seconds, not in the future; parsed by `parse_cutoff` in `operations/retention.py` |
+| 3   | B1   | Retention | `archive_before` in `storage/repository.py`: records with timestamp strictly earlier than the cutoff are archived; archives the id prefix up to the newest expired record |
 | 4   | B1   | Retention | Sets `archived = true`, clears event fields, payload, `field_hashes`, `field_salts`; keeps `id`, `timestamp`, `contentHash`, `previousHash`; one transaction under the write lock                                  |
-| 5   | B1   | Script    | `operations/retention.py` (`run_retention`, `main`), thin `scripts/run_retention.py`; `make retention` passes `--env-file .env` when `.env` exists; exit `1` if config invalid                                     |
+| 5   | B1   | Script    | `operations/retention.py` (`parse_cutoff`, `run_retention`, `main`), thin `scripts/run_retention.py`; `make retention BEFORE=…` passes `--before` and `--env-file .env` when `.env` exists; exit `2` if `--before` missing, invalid or in the future |
 | 6   | B2   | Verify    | Reused unchanged `verify_chain`: archived records get the link check only; archived after non-archived is `INVALID_ARCHIVE` (both already built in A6)                                                             |
 | 7   | B2   | Tests     | Unit `test_retention.py` and integration `test_retention_script.py` (runs the real script): verify intact after retention at several windows, new appends still link, out-of-order archive gives `INVALID_ARCHIVE` |
+| 8   | B1   | Change    | Replaced `RETENTION_DAYS` config with required `make retention BEFORE=…` cutoff per §4; removed `config.retention_days()` and its tests; unit + integration tests cover missing, invalid, non-`Z`, fractional and future values |
 
 ## 8. Validation
 

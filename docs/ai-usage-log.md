@@ -87,6 +87,14 @@
 
 - **Category:** Implementation
 - **Prompt:** Implement B1 (archive columns + retention script) and B2 (verify handles archived records) from docs/scenario-b.md following its decisions, adding a make retention target that runs scripts/run_retention.py and reusing the existing verify logic extended for archived records and INVALID_ARCHIVE; make check passes.
-- **Decision:** Rejected
+- **Decision:** Modified
 - **Rationale:** Remove retention days value form .env config value. Instead Use timestamp passed by the operator while running script
+- **Commit:** c31eac6
+
+## #12 — scenario-b Task: B1 & B2 modified (2026-09-27)
+
+- **Category:** Implementation
+- **Prompt:** Change retention per docs/scenario-b.md: remove RETENTION_DAYS entirely (config, .env.example, validation); scripts/run_retention.py takes a required --before argument (ISO 8601 UTC with Z) and archives records with timestamp strictly earlier than it, rejecting missing, invalid, or future values. Update the Makefile so make retention BEFORE=... passes it through, update tests; make check passes.
+- **Decision:** Accepted
+- **Rationale:** Modified logic to pass retention time as a parameter to script. Look at Makefile how th param is passed
 - **Commit:** TODO (engineer)

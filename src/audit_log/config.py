@@ -17,21 +17,3 @@ def sensitive_fields() -> frozenset[str]:
     """
     raw = os.environ.get("SENSITIVE_FIELDS", "")
     return frozenset(field.strip() for field in raw.split(",") if field.strip())
-
-
-def retention_days() -> int:
-    """Age in days after which records are archived (``RETENTION_DAYS``).
-
-    Required by the retention script; must be a positive integer. There is no default so a
-    missing setting never archives records by accident.
-    """
-    raw = os.environ.get("RETENTION_DAYS", "").strip()
-    if not raw:
-        raise ValueError("RETENTION_DAYS is not set")
-    try:
-        days = int(raw)
-    except ValueError as exc:
-        raise ValueError("RETENTION_DAYS must be an integer") from exc
-    if days < 1:
-        raise ValueError("RETENTION_DAYS must be at least 1")
-    return days

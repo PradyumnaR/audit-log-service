@@ -6,9 +6,10 @@ install:
 run:
 	uv run uvicorn audit_log.api.app:app --reload
 
-# Operator task: archive records older than RETENTION_DAYS (read from .env when present).
+# Operator task: archive records older than BEFORE (ISO 8601 UTC with Z), e.g.
+#   make retention BEFORE=2026-01-01T00:00:00Z
 retention:
-	uv run $(if $(wildcard .env),--env-file .env) python scripts/run_retention.py
+	uv run $(if $(wildcard .env),--env-file .env) python scripts/run_retention.py $(if $(BEFORE),--before "$(BEFORE)")
 
 test:
 	uv run pytest
