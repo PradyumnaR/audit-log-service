@@ -46,6 +46,17 @@ All hashing lives in this one module. It uses only the standard library, so scri
 - **Field hash:** SHA-256(raw salt bytes + UTF-8 canonical JSON of the value). The salt comes from `secrets.token_bytes(32)`, one per field per record.
 - **Genesis:** `6a09e667bb67ae853c6ef372a54ff53a510e527f9b05688c1f83d9ab5be0cd19`, the first 32 bits of the fractional parts of the square roots of the first 8 primes.
 
+### Appending to the chain (`src/audit_log/storage/repository.py`)
+
+`append_event(session, NewEvent)` saves one record and commits. Inside a single transaction it:
+
+1. Reads the `content_hash` of the record with the highest `id`. If the table is empty it uses the genesis hash. Archived records keep their `content_hash`, so they still provide the link.
+2. Assigns the server timestamp.
+3. Salts and hashes the `SENSITIVE_FIELDS` keys, then computes the content hash with `domain/hashing.py`.
+4. Inserts the record.
+
+**Write lock:** on SQLite, `make_engine` makes every transaction start with `BEGIN IMMEDIATE`, so the database write lock is taken at the transaction's first statement. Parallel appends therefore run one at a time: each one waits for the lock (pysqlite's default 5 s busy timeout), then sees the record committed before it. Because the timestamp is also taken under the lock, timestamps never decrease in `id` order. The trade-off is that reads also take the lock while their transaction is open. That is acceptable at SQLite scale.
+
 ### Configuration (`src/audit_log/config.py`)
 
 - `SENSITIVE_FIELDS`: comma-separated top-level payload keys. Empty by default.

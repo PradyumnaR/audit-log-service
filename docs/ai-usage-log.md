@@ -41,4 +41,12 @@
 - **Prompt:** Implement A1 and A2 from docs/scenario-a.md: the audit_events table (snake_case columns including archived, field_hashes, field_salts) and a single reusable hashing module using SHA-256 over canonical JSON, with salted field hashes for SENSITIVE_FIELDS used in place of raw values in the content hash, and no endpoints. Acceptance: unit tests show key-order independence, that changing any hashed field changes the hash, and that sensitive fields hash via their field hash; make check passes.
 - **Decision:** Accepted
 - **Rationale:** Verified table schema changes, hash logic, Ran test cases.
+- **Commit:** a9ca00b
+
+## #6 — scenario-a Tasks: A3 (2026-09-27)
+
+- **Category:** Implementation, Test generation
+- **Prompt:** Implement A3 from docs/scenario-a.md (save with chain link) following the decisions in docs/scenario-a.md and docs/scenario-b.md, reusing the A2 hashing module. Include a test that runs 5 simultaneous writes and checks the chain is still unbroken; make check passes.
+- **Decision:** Accepted
+- **Rationale:** Checked code changes, ran make test to inspect hashing link changes
 - **Commit:** TODO (engineer)

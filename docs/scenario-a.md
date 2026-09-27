@@ -150,17 +150,17 @@ Violation types: CONTENT_HASH_MISMATCH, BROKEN_LINK
 
 ## 5. Tasks
 
-| #   | Task                 | Needs    | Done when                                                                              |
-| --- | -------------------- | -------- | -------------------------------------------------------------------------------------- |
-| A1  | Database Table       | -        | Table name: audit_events; Store all event fields, both hashes, and an order number     |
-| A2  | Hashing              | -        | Same data always gives the same hash; sensitive fields hashed via salted field hash    |
-| A3  | Save with chain link | A1, A2   | Eash record link to its previous hash, first links to genesis                          |
-| A4  | POST /audit/events   | A3       | Saves valid events into database, rejects bad inputs, no update/delete                 |
-| A5  | GET /audit/events    | A1       | Filters and Pagination work                                                            |
-| A6  | Verify logic         | A2       | Finds each problem type                                                                |
-| A7  | GET /audit/verify    | A6       | Returns intact or first bad record + problem type (CONTENT_HASH_MISMATCH, BROKEN_LINK) |
-| A8  | Tamper test + demo   | A4, A7   | Direct DB edit is detected                                                             |
-| A9  | Update docs          | A1 to A8 | Docs match the code built                                                              |
+| #   | Task                 | Needs    | Done when                                                                                                      |
+| --- | -------------------- | -------- | -------------------------------------------------------------------------------------------------------------- |
+| A1  | Database Table       | -        | Table name: audit_events; Store all event fields, both hashes, and an order number                             |
+| A2  | Hashing              | -        | Same data always gives the same hash; sensitive fields hashed via salted field hash                            |
+| A3  | Save with chain link | A1, A2   | Eash record link to its previous hash, first links to genesis;parallel writes still produce one unbroken chain |
+| A4  | POST /audit/events   | A3       | Saves valid events into database, rejects bad inputs, no update/delete                                         |
+| A5  | GET /audit/events    | A1       | Filters and Pagination work                                                                                    |
+| A6  | Verify logic         | A2       | Finds each problem type                                                                                        |
+| A7  | GET /audit/verify    | A6       | Returns intact or first bad record + problem type (CONTENT_HASH_MISMATCH, BROKEN_LINK)                         |
+| A8  | Tamper test + demo   | A4, A7   | Direct DB edit is detected                                                                                     |
+| A9  | Update docs          | A1 to A8 | Docs match the code built                                                                                      |
 
 ## 6. Execution notes
 
