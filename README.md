@@ -35,6 +35,28 @@ make security   # bandit + pip-audit
 make check      # all of the above gates
 ```
 
+## Scripts
+
+Operator scripts in `scripts/` use the same database as the service. Run them via `make`,
+which loads `.env` if it exists, or directly with `uv run` (add `--env-file .env` to load it):
+
+```sh
+# Archive records older than a cutoff (ISO 8601 UTC with Z)
+make retention BEFORE=2026-01-01T00:00:00Z
+uv run python scripts/run_retention.py --before 2026-01-01T00:00:00Z
+
+# Redact one sensitive payload field of one record
+make redact ID=3 FIELD=accountNumber
+uv run python scripts/redact.py --id 3 --field accountNumber
+
+# Verify an exported bundle offline (standard library only, no service or database needed)
+python scripts/verify_bundle.py bundle.json
+```
+
+Missing or invalid arguments exit with status 2. `redact.py` exits 1 if the redaction is
+refused. `verify_bundle.py` exits 0 if the bundle is intact, 1 if verification fails, and 2
+if the file can't be read or isn't JSON.
+
 ## Layout
 
 ```

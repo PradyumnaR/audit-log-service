@@ -130,3 +130,11 @@
 - **Decision:** Accepted
 - **Rationale:** Tested with the commit. Reviewd code changes.
 - **Commit:** 434cc2d
+
+## #17 — Update README.md with scripts/\* (2026-09-28)
+
+- **Category:** Documentation
+- **Prompt:** Update README.md with syntax on how to run files inside scripts/\*.
+- **Decision:** Accepted
+- **Rationale:** Checked README.md file
+- **Commit:** TODO (engineer)
