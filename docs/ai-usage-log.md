@@ -119,6 +119,14 @@
 
 - **Category:** Implementation
 - **Prompt:** Implement C1, C2 and C3 from docs/scenario-c.md: document the account access event convention with a sample ACCOUNT_VIEWED event in scenario-c.md and the README, add GET /audit/reports/account-access (required from/to, optional resourceId or actorId, reusing GET /audit/events query logic, pagination and archived/redacted handling) with tests, and update execution notes without editing docs/architecture.md; make check passes.
-- **Decision:** TODO (engineer)
-- **Rationale:** TODO (engineer)
+- **Decision:** Accepted
+- **Rationale:** Verified code changes, testet api using fastapi swagger docs
 - **Commit:** ce184c5
+
+## #16 — scenario-c (2026-09-27)
+
+- **Category:** Implementation
+- **Prompt:** Create git hook that runs "make check" before engineer pushing the code to gitHub.
+- **Decision:** Accepted
+- **Rationale:** Tested with the commit. Reviewd code changes.
+- **Commit:** 434cc2d
