@@ -113,4 +113,4 @@
 - **Prompt:** Implement B5, B6 and B7 from docs/scenario-b.md: the GET /audit/export endpoint returning a verifiable bundle for an actorId or resourceType + resourceId, a stdlib-only scripts/verify_bundle.py offline verifier, and retention/redaction tests; make check passes.
 - **Decision:** Accepted
 - **Rationale:** Verified code changes; exported bundle; verified bundle againt verify script
-- **Commit:** TODO (engineer)
+- **Commit:** 42e744e

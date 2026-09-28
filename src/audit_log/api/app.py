@@ -9,7 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy import Engine
 
-from audit_log.api import events, export, verify
+from audit_log.api import events, export, reports, verify
 from audit_log.storage.database import create_schema, make_engine
 
 
@@ -43,6 +43,7 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     app.include_router(events.router)
     app.include_router(verify.router)
     app.include_router(export.router)
+    app.include_router(reports.router)
     return app
 
 

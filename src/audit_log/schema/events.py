@@ -24,7 +24,7 @@ from pydantic.alias_generators import to_camel
 
 from audit_log.domain.hashing import canonical_json, format_timestamp
 from audit_log.storage.models import ID_MAX_LENGTH, TYPE_MAX_LENGTH, AuditEvent
-from audit_log.storage.repository import EventFilter, NewEvent
+from audit_log.storage.repository import EventFilter, EventPage, NewEvent
 
 # Upper bound on the canonical JSON of ``payload``, in UTF-8 bytes.
 MAX_PAYLOAD_BYTES = 16 * 1024
@@ -200,3 +200,10 @@ class EventList(_CamelModel):
 
     items: list[EventRecord]
     next_cursor: str | None
+
+    @classmethod
+    def from_page(cls, page: EventPage) -> Self:
+        return cls(
+            items=[EventRecord.from_record(record) for record in page.records],
+            next_cursor=str(page.next_after_id) if page.next_after_id is not None else None,
+        )

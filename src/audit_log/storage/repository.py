@@ -35,6 +35,7 @@ class EventFilter:
     """Query filters; ``None`` means "any". Timestamps are canonical UTC strings."""
 
     event_type: str | None = None
+    event_types: frozenset[str] | None = None  # any of these; combines with event_type
     actor_id: str | None = None
     resource_type: str | None = None
     resource_id: str | None = None
@@ -118,6 +119,8 @@ def _live_matching(event_filter: EventFilter) -> Select[AuditEvent]:
     statement = select(AuditEvent).where(AuditEvent.archived.is_(False))
     if event_filter.event_type is not None:
         statement = statement.where(AuditEvent.event_type == event_filter.event_type)
+    if event_filter.event_types is not None:
+        statement = statement.where(AuditEvent.event_type.in_(sorted(event_filter.event_types)))
     if event_filter.actor_id is not None:
         statement = statement.where(AuditEvent.actor_id == event_filter.actor_id)
     if event_filter.resource_type is not None:

@@ -9,7 +9,7 @@ from typing import Annotated
 from fastapi import APIRouter, Query, status
 
 from audit_log.api.dependencies import SessionDep
-from audit_log.schema.events import EventCreate, EventCreated, EventList, EventQuery, EventRecord
+from audit_log.schema.events import EventCreate, EventCreated, EventList, EventQuery
 from audit_log.storage.repository import append_event, query_events
 
 router = APIRouter(prefix="/audit/events", tags=["events"])
@@ -34,7 +34,4 @@ def create_event(body: EventCreate, session: SessionDep) -> EventCreated:
 def list_events(query: Annotated[EventQuery, Query()], session: SessionDep) -> EventList:
     """Query non-archived events in id order, with filters and cursor pagination."""
     page = query_events(session, query.to_filter(), limit=query.limit, after_id=query.after_id)
-    return EventList(
-        items=[EventRecord.from_record(record) for record in page.records],
-        next_cursor=str(page.next_after_id) if page.next_after_id is not None else None,
-    )
+    return EventList.from_page(page)

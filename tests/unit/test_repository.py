@@ -242,6 +242,17 @@ def test_query_on_empty_table(engine: Engine) -> None:
         pytest.param(
             EventFilter(resource_type="ACCOUNT", actor_id="user-1042"), [1, 2], id="combined"
         ),
+        pytest.param(
+            EventFilter(event_types=frozenset({"USER_LOGIN", "RECORD_UPDATED"})),
+            [1, 2, 3, 4],
+            id="event-types",
+        ),
+        pytest.param(
+            EventFilter(event_types=frozenset({"USER_LOGIN"}), actor_id="user-1042"),
+            [2],
+            id="event-types-combined",
+        ),
+        pytest.param(EventFilter(event_types=frozenset()), [], id="event-types-empty"),
     ],
 )
 def test_query_filters(engine: Engine, event_filter: EventFilter, expected: list[int]) -> None:
