@@ -103,6 +103,14 @@
 
 - **Category:** Implementation
 - **Prompt:** Implement B3 and B4 from docs/scenario-b.md, adding scripts/redact.py and a make redact target (make redact ID=… FIELD=…), reusing the existing hashing and verify logic; make check passes.
-- **Decision:** TODO (engineer)
-- **Rationale:** TODO (engineer)
+- **Decision:** Accepted
+- **Rationale:** Run redact script; verified GET, /aduit/verify api's
+- **Commit:** 353febb
+
+## #14 — scenario-b export & verify bundle (2026-09-27)
+
+- **Category:** Implementation
+- **Prompt:** Implement B5, B6 and B7 from docs/scenario-b.md: the GET /audit/export endpoint returning a verifiable bundle for an actorId or resourceType + resourceId, a stdlib-only scripts/verify_bundle.py offline verifier, and retention/redaction tests; make check passes.
+- **Decision:** Accepted
+- **Rationale:** Verified code changes; exported bundle; verified bundle againt verify script
 - **Commit:** TODO (engineer)

@@ -32,7 +32,7 @@ packages = ["src/audit_log"]
 [tool.ruff]
 line-length = 100
 target-version = "py313"
-src = ["src", "tests"]
+src = ["src", "tests", "scripts"]
 
 [tool.ruff.lint]
 select = [
@@ -54,11 +54,13 @@ select = [
 [tool.mypy]
 python_version = "3.13"
 strict = true
-files = ["src", "tests"]
+files = ["src", "tests", "scripts"]
+mypy_path = "scripts"
 plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["scripts"]  # tests import scripts/verify_bundle.py as a module
 addopts = "-ra --strict-markers --cov=audit_log --cov-report=term-missing"
 
 [tool.coverage.run]

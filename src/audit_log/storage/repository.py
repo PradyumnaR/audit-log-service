@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, cast
 
-from sqlalchemy import CursorResult, func, select, update
+from sqlalchemy import CursorResult, Select, func, select, update
 from sqlalchemy.orm import Session
 
 from audit_log.config import sensitive_fields as configured_sensitive_fields
@@ -110,17 +110,11 @@ def append_event(
     return record
 
 
-def query_events(
-    session: Session, event_filter: EventFilter, *, limit: int, after_id: int | None = None
-) -> EventPage:
-    """Return up to ``limit`` non-archived records matching ``event_filter``, in id order.
+def _live_matching(event_filter: EventFilter) -> Select[AuditEvent]:
+    """Select non-archived records matching ``event_filter``, in id order.
 
-    Pagination is keyset-based on ``id``: pass the previous page's ``next_after_id`` as
-    ``after_id`` to continue. Archived records are excluded because their content is gone.
     Timestamps are fixed-format strings, so text comparison matches time order.
     """
-    if limit < 1:
-        raise ValueError("limit must be at least 1")
     statement = select(AuditEvent).where(AuditEvent.archived.is_(False))
     if event_filter.event_type is not None:
         statement = statement.where(AuditEvent.event_type == event_filter.event_type)
@@ -134,14 +128,37 @@ def query_events(
         statement = statement.where(AuditEvent.timestamp >= event_filter.from_timestamp)
     if event_filter.to_timestamp is not None:
         statement = statement.where(AuditEvent.timestamp < event_filter.to_timestamp)
+    return statement.order_by(AuditEvent.id)
+
+
+def query_events(
+    session: Session, event_filter: EventFilter, *, limit: int, after_id: int | None = None
+) -> EventPage:
+    """Return up to ``limit`` non-archived records matching ``event_filter``, in id order.
+
+    Pagination is keyset-based on ``id``: pass the previous page's ``next_after_id`` as
+    ``after_id`` to continue. Archived records are excluded because their content is gone.
+    """
+    if limit < 1:
+        raise ValueError("limit must be at least 1")
+    statement = _live_matching(event_filter)
     if after_id is not None:
         statement = statement.where(AuditEvent.id > after_id)
     # Fetch one extra row to learn whether another page exists.
-    records = list(session.scalars(statement.order_by(AuditEvent.id).limit(limit + 1)))
+    records = list(session.scalars(statement.limit(limit + 1)))
     if len(records) > limit:
         records = records[:limit]
         return EventPage(records=records, next_after_id=records[-1].id)
     return EventPage(records=records, next_after_id=None)
+
+
+def export_events(session: Session, event_filter: EventFilter) -> list[AuditEvent]:
+    """Return every non-archived record matching ``event_filter``, in id order.
+
+    One query, so the export is a single consistent snapshot (on SQLite it runs under the
+    write lock, see ``make_engine``).
+    """
+    return list(session.scalars(_live_matching(event_filter)))
 
 
 CHAIN_BATCH_SIZE = 500

@@ -22,6 +22,10 @@ Field hash (sensitive payload keys)
     field per record. The content hash covers the field hash instead of the raw value, so
     the raw value and salt can later be removed without changing the content hash.
 
+Bundle hash (exports)
+    SHA-256 over the canonical JSON array of the exported records' content hashes, in id
+    order, so adding, removing or reordering records changes it.
+
 Canonical JSON
     Sorted keys, no whitespace (``","`` and ``":"`` separators), non-ASCII kept as UTF-8,
     NaN/Infinity rejected.
@@ -36,6 +40,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 HASH_ALGORITHM = "SHA-256"
+SERIALIZATION = "canonical JSON (sorted keys, no whitespace)"
 SALT_BYTES = 32
 
 # First 32 bits of the fractional parts of the square roots of the first 8 primes
@@ -142,3 +147,8 @@ def compute_content_hash(
         "previousHash": previous_hash,
     }
     return sha256_hex(canonical_json(content).encode("utf-8"))
+
+
+def compute_bundle_hash(content_hashes: Iterable[str]) -> str:
+    """Return SHA-256 over the canonical JSON array of ``content_hashes`` (in id order)."""
+    return sha256_hex(canonical_json(list(content_hashes)).encode("utf-8"))

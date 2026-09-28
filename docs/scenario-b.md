@@ -110,6 +110,13 @@ GET /audit/export?resourceType=ACCOUNT&resourceId=acct-88731
 | 11  | B4   | Refusals  | Field not in `SENSITIVE_FIELDS`, unknown or archived record, record without that field hash, already redacted, and (added) value not matching its field hash, so redaction can't erase evidence of an edit; nothing changes on refusal |
 | 12  | B4   | Script    | `operations/redaction.py` (`run_redaction`, `main`), thin `scripts/redact.py`; `make redact ID=… FIELD=…` passes `--id`/`--field` and `--env-file .env` when present; exit `0` done, `1` refused, `2` missing/invalid arguments |
 | 13  | B4   | Tests     | Unit `test_redaction.py` (hashes unchanged, verify intact, `[REDACTED]` response, every refusal leaves the row untouched, CLI args) and integration `test_redact_script.py` (runs the real script; verify intact, new appends link, refusals) |
+| 14  | B6   | Export    | `GET /audit/export` (`api/export.py`, `schema/export.py`): exactly one of `actorId` or `resourceType` + `resourceId`, else 422; unknown params rejected; read-only (other methods 405); no pagination, one query snapshot via `export_events` (shares `_live_matching` with `query_events`) |
+| 15  | B6   | Bundle    | Records reuse `EventRecord` (`[REDACTED]` masking) plus `fieldHashes` and `fieldSalts` (unredacted only); archived excluded; metadata per §3; `bundleHash` = SHA-256 over canonical JSON array of contentHashes in id order (`compute_bundle_hash` in `domain/hashing.py`) |
+| 16  | B7   | Verifier  | `scripts/verify_bundle.py` is self-contained (stdlib only) so a recipient needs just the file; checks shape, SHA-256, strictly increasing ids, filter match, content hash, field hashes (no salt must be `[REDACTED]`), link for consecutive ids, `recordCount`, `bundleHash`; exit `0` intact, `1` failed, `2` unreadable |
+| 17  | B7   | Parity    | Hashing is duplicated from `domain/hashing.py`; unit tests assert identical canonical JSON, field, content and bundle hashes on tricky values, and that the script imports only stdlib; integration runs a lone copy with `python -I -S` (no project, no site-packages) |
+| 18  | B7   | Limits    | `bundleHash` is unkeyed: it detects accidental or naive changes, but someone who recomputes every hash can forge a bundle; compare `bundleHash` / contentHashes with the service to anchor it |
+| 19  | B7   | Tooling   | `scripts/` added to mypy files and ruff `src`; pytest `pythonpath = ["scripts"]` so tests import `verify_bundle` |
+| 20  | B5   | Tests     | Unit `test_retention_and_redaction.py` and integration `test_retention_and_redaction_scripts.py` (real scripts + API + offline verifier): archived + redacted chain verifies; edits, deletes and out-of-order archive still detected; tampered export fails |
 
 ## 8. Validation
 

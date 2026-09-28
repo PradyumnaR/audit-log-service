@@ -9,7 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy import Engine
 
-from audit_log.api import events, verify
+from audit_log.api import events, export, verify
 from audit_log.storage.database import create_schema, make_engine
 
 
@@ -42,6 +42,7 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     app.add_exception_handler(RequestValidationError, _validation_error)  # type: ignore[arg-type]
     app.include_router(events.router)
     app.include_router(verify.router)
+    app.include_router(export.router)
     return app
 
 
