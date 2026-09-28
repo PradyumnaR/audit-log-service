@@ -114,3 +114,11 @@
 - **Decision:** Accepted
 - **Rationale:** Verified code changes; exported bundle; verified bundle againt verify script
 - **Commit:** 42e744e
+
+## #15 — scenario-c (2026-09-27)
+
+- **Category:** Implementation
+- **Prompt:** Implement C1, C2 and C3 from docs/scenario-c.md: document the account access event convention with a sample ACCOUNT_VIEWED event in scenario-c.md and the README, add GET /audit/reports/account-access (required from/to, optional resourceId or actorId, reusing GET /audit/events query logic, pagination and archived/redacted handling) with tests, and update execution notes without editing docs/architecture.md; make check passes.
+- **Decision:** TODO (engineer)
+- **Rationale:** TODO (engineer)
+- **Commit:** ce184c5
