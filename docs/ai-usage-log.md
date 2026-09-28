@@ -137,4 +137,4 @@
 - **Prompt:** Update README.md with syntax on how to run files inside scripts/\*.
 - **Decision:** Accepted
 - **Rationale:** Checked README.md file
-- **Commit:** TODO (engineer)
+- **Commit:** bab327b
