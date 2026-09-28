@@ -1,0 +1,6 @@
+#!/bin/sh
+echo "Running make check before push..."
+make check || {
+  echo "make check failed; push cancelled."
+  exit 1
+}
